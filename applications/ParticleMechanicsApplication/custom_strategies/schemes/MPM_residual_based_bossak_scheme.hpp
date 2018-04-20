@@ -224,11 +224,9 @@ public:
             }
         }
 
-
 		#pragma omp parallel for
 		for(int iter = 0; iter < static_cast<int>(r_model_part.Nodes().size()); ++iter)
 		{
-			
 			auto i = r_model_part.NodesBegin() + iter;
 			array_1d<double, 3 > & DeltaDisplacement = (i)->FastGetSolutionStepValue(DISPLACEMENT);
 
@@ -239,22 +237,12 @@ public:
             array_1d<double, 3 > & CurrentAcceleration  = (i)->FastGetSolutionStepValue(ACCELERATION, 0);
             array_1d<double, 3 > & PreviousAcceleration = (i)->FastGetSolutionStepValue(ACCELERATION, 1);
 
-
-
-
-
-            UpdateVelocityUpdate     (CurrentVelocity, DeltaDisplacement, PreviousVelocity);
-
-            UpdateAcceleration (CurrentAcceleration, DeltaDisplacement, PreviousVelocity, PreviousAcceleration);
+            UpdateVelocityUpdate(CurrentVelocity, DeltaDisplacement, PreviousVelocity);
+            UpdateAcceleration(CurrentAcceleration, DeltaDisplacement, PreviousVelocity, PreviousAcceleration);
 		}
-
-
-
-        
 
         KRATOS_CATCH( "" )
     }
-
 
     //***************************************************************************
     //***************************************************************************
@@ -270,9 +258,6 @@ public:
         TSystemVectorType& b
     )
     {
-        //std::cout << " Prediction " << std::endl;
-        //array_1d<double, 3 > DeltaDisplacement;
-
 		#pragma omp parallel for
 		for(int iter = 0; iter < static_cast<int>(r_model_part.Nodes().size()); ++iter)
 		{
@@ -283,9 +268,6 @@ public:
             array_1d<double, 3 > & CurrentDisplacement  = (i)->FastGetSolutionStepValue(DISPLACEMENT);
             //array_1d<double, 3 > & ImposedDisplacement  = (i)->FastGetSolutionStepValue(IMPOSED_DISPLACEMENT);
             array_1d<double, 3 > & PreviousAcceleration  = (i)->FastGetSolutionStepValue(ACCELERATION, 1);
-
-            
-
 
             if ((i->pGetDof(DISPLACEMENT_X))->IsFixed() == false)
             {
@@ -305,7 +287,6 @@ public:
                 CurrentDisplacement[1]  = PreviousDisplacement[1];// + ImposedDisplacement[1];
             }
 
-
             if (i->HasDofFor(DISPLACEMENT_Z))
             {
                 if (i->pGetDof(DISPLACEMENT_Z)->IsFixed() == false)
@@ -320,7 +301,6 @@ public:
 
             //(i)->FastGetSolutionStepValue(DISPLACEMENT_AUX) = CurrentDisplacement;
 
-
             if (i->HasDofFor(PRESSURE))
             {
                 double& PreviousPressure    = (i)->FastGetSolutionStepValue(PRESSURE, 1);
@@ -329,27 +309,16 @@ public:
                 if ((i->pGetDof(PRESSURE))->IsFixed() == false)
                     CurrentPressure = PreviousPressure;
                 //CurrentPressure = 0.0;
-
             }
 
-
-
             //updating time derivatives
-
             array_1d<double, 3 > & CurrentVelocity       = (i)->FastGetSolutionStepValue(VELOCITY);
             array_1d<double, 3 > & CurrentAcceleration   = (i)->FastGetSolutionStepValue(ACCELERATION);
 
-
-
             UpdateVelocityPredict     (CurrentVelocity, CurrentDisplacement, PreviousVelocity, PreviousAcceleration);
-
             UpdateAcceleration (CurrentAcceleration, CurrentDisplacement, PreviousVelocity, PreviousAcceleration);
 			
 		}
-
-
-        
-
     }
 
     //***************************************************************************
@@ -445,7 +414,6 @@ public:
 
         //LOOP OVER THE GRID NODES PERFORMED FOR CLEAR ALL NODAL INFORMATION
 
-
 		#pragma omp parallel for
 		for(int iter = 0; iter < static_cast<int>(mr_grid_model_part.Nodes().size()); ++iter)
 		{
@@ -494,13 +462,6 @@ public:
             }
 		}
 
-
-        
-
-
-
-
-
         //double RatioNormVel = 1.0;
         //double RatioNormAcc = 1.0;
         //double RatioNormPres = 1.0;
@@ -524,17 +485,11 @@ public:
         //while (RatioNormVel > TolVel || RatioNormPres > TolPres)// && ItNum <1000)
         while (ItNum <2)
         {
-            //std::cout<< "ItNum "<<ItNum<<std::endl;
-
-//**************************************************************************************
-            
-            
             #pragma omp parallel for
 			for( int iter = 0; iter < static_cast<int>(mr_grid_model_part.Nodes().size()); ++iter)
 			{
-			
-			auto i = mr_grid_model_part.NodesBegin() + iter;
-            if( (i)->SolutionStepsDataHas(NODAL_MOMENTUM) && (i)->SolutionStepsDataHas(NODAL_MASS) && (i)->SolutionStepsDataHas(NODAL_INERTIA))//&& (i)->SolutionStepsDataHas(NODAL_INTERNAL_FORCE) )
+                auto i = mr_grid_model_part.NodesBegin() + iter;
+                if( (i)->SolutionStepsDataHas(NODAL_MOMENTUM) && (i)->SolutionStepsDataHas(NODAL_MASS) && (i)->SolutionStepsDataHas(NODAL_INERTIA))//&& (i)->SolutionStepsDataHas(NODAL_INTERNAL_FORCE) )
                 {
 
                     array_1d<double, 3 > & NodalMomentum = (i)->FastGetSolutionStepValue(NODAL_MOMENTUM);
@@ -572,12 +527,12 @@ public:
             Scheme<TSparseSpace,TDenseSpace>::InitializeSolutionStep(r_model_part,A,Dx,b);
 
             // int counter = 0;
-			#pragma omp parallel for
+			#pragma omp parallel for reduction(+:NormVel,NormAcc,NormPres,NormDeltaVel,NormDeltaAcc,NormDeltaPres)
 			for(int iter = 0; iter < static_cast<int>(mr_grid_model_part.Nodes().size()); ++iter)
 			{
 			
-			auto i = mr_grid_model_part.NodesBegin() + iter;
-			double & NodalMass     = (i)->FastGetSolutionStepValue(NODAL_MASS);
+			    auto i = mr_grid_model_part.NodesBegin() + iter;
+			    double & NodalMass     = (i)->FastGetSolutionStepValue(NODAL_MASS);
                 
                 double DeltaNodalPressure = 0.0;
 
@@ -612,9 +567,6 @@ public:
                     }
                     else
                     {
-                        // #pragma omp critical
-                        // counter++;
-
                         DeltaNodalVelocity[0] = 0.0;
                         DeltaNodalAcceleration[0] = 0.0;
                         //DeltaNodalAcceleration[0] = NodalInertia[0]/NodalMass;
@@ -674,7 +626,9 @@ public:
                 }
 			
 			
-			}
+            }
+            
+            std::cout << " ============ " <<  NormVel << " ============ " << std::cout;
 
             //  std::cout << "Node Count = " << nodes_counter << std::endl;
             
